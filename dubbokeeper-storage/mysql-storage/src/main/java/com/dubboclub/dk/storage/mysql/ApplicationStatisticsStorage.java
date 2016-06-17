@@ -1,6 +1,5 @@
 package com.dubboclub.dk.storage.mysql;
 
-<<<<<<< HEAD
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -13,36 +12,17 @@ import java.util.concurrent.TimeUnit;
 
 import javax.sql.DataSource;
 
-=======
-import com.alibaba.dubbo.common.utils.ConfigUtils;
-import com.dubboclub.dk.storage.AbstractApplicationStatisticsStorage;
-import com.dubboclub.dk.storage.model.ApplicationInfo;
-import com.dubboclub.dk.storage.model.Statistics;
-import com.dubboclub.dk.storage.mysql.mapper.ApplicationMapper;
-import com.dubboclub.dk.storage.mysql.mapper.StatisticsMapper;
->>>>>>> b584b48b4715290f6667c9b33410c4e233c1edc5
 import org.apache.commons.lang.StringUtils;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-<<<<<<< HEAD
 import com.alibaba.dubbo.common.utils.ConfigUtils;
 import com.dubboclub.dk.storage.model.ApplicationInfo;
 import com.dubboclub.dk.storage.model.Statistics;
 import com.dubboclub.dk.storage.mysql.mapper.ApplicationMapper;
 import com.dubboclub.dk.storage.mysql.mapper.StatisticsMapper;
-=======
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
->>>>>>> b584b48b4715290f6667c9b33410c4e233c1edc5
 
 /**
  * @date: 2015/12/28.
@@ -53,11 +33,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * @fix:
  * @description: 描述功能
  */
-<<<<<<< HEAD
 public class ApplicationStatisticsStorage {
-=======
-public class ApplicationStatisticsStorage  extends AbstractApplicationStatisticsStorage{
->>>>>>> b584b48b4715290f6667c9b33410c4e233c1edc5
 
     private static final String APPLICATION_TEMPLATE="CREATE TABLE `statistics_{}` (\n" +
             "  `id` int(11) NOT NULL AUTO_INCREMENT,\n" +
@@ -90,7 +66,6 @@ public class ApplicationStatisticsStorage  extends AbstractApplicationStatistics
 
     private ApplicationMapper applicationMapper;
 
-<<<<<<< HEAD
     private LinkedBlockingDeque<Statistics> statisticsCollection;
 
     private String application;
@@ -114,16 +89,11 @@ public class ApplicationStatisticsStorage  extends AbstractApplicationStatistics
     private ScheduledExecutorService scheduledExecutorService;
 
 
-=======
-    private int type;
-
->>>>>>> b584b48b4715290f6667c9b33410c4e233c1edc5
     public ApplicationStatisticsStorage(ApplicationMapper applicationMapper,StatisticsMapper statisticsMapper,DataSource dataSource,TransactionTemplate transactionTemplate,String application,int type){
         this(applicationMapper,statisticsMapper,dataSource,transactionTemplate,application,type,false);
     }
 
     public ApplicationStatisticsStorage(ApplicationMapper applicationMapper,StatisticsMapper statisticsMapper,DataSource dataSource,TransactionTemplate transactionTemplate,String application,int type,boolean needCreateTable){
-        super(application);
         this.application = application;
         this.statisticsMapper = statisticsMapper;
         this.dataSource = dataSource;
@@ -156,7 +126,6 @@ public class ApplicationStatisticsStorage  extends AbstractApplicationStatistics
         maxSuccess=success==null?0:success;
     }
 
-<<<<<<< HEAD
     public void addStatistics(Statistics statistics){
         if(WRITE_INTERVAL<=0){
             statisticsMapper.addOne(application,statistics);
@@ -224,28 +193,6 @@ public class ApplicationStatisticsStorage  extends AbstractApplicationStatistics
 		
 	}
     
-=======
-    @Override
-    protected void batchAddStatistics(List<Statistics> statisticsList) {
-        batchInsert(statisticsList);
-    }
-
-
-    public boolean batchInsert(final List<Statistics> statisticsList){
-        return transactionTemplate.execute(new TransactionCallback<Boolean>() {
-            @Override
-            public Boolean doInTransaction(TransactionStatus status) {
-                int size = statisticsMapper.batchInsert(application,statisticsList);
-                if(size!=statisticsList.size()){
-                    status.setRollbackOnly();
-                    return false;
-                }
-                return true;
-            }
-        });
-    }
-
->>>>>>> b584b48b4715290f6667c9b33410c4e233c1edc5
     private boolean  createNewAppTable(final String applicationName){
         return transactionTemplate.execute(new TransactionCallback<Boolean>() {
             @Override
@@ -275,6 +222,26 @@ public class ApplicationStatisticsStorage  extends AbstractApplicationStatistics
         });
     }
 
+
+    public int getMaxSuccess() {
+        return maxSuccess;
+    }
+
+    public int getMaxFault() {
+        return maxFault;
+    }
+
+    public long getMaxConcurrent() {
+        return maxConcurrent;
+    }
+
+    public long getMaxElapsed() {
+        return maxElapsed;
+    }
+
+    public String getApplication() {
+        return application;
+    }
 
     public int getType() {
         return type;
