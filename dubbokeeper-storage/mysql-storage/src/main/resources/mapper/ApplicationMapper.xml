@@ -11,7 +11,7 @@
         insert into application (name,type) value(#{applicationName},#{applicationType})
     </insert>
     <select id="listApps" resultMap="appMap">
-        select lower(name) as name,type from application
+        select name,type from application
     </select>
 
     <select id="getAppType" parameterType="String">

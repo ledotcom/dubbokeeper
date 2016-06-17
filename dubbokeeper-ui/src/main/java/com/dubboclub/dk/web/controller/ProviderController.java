@@ -2,10 +2,12 @@ package com.dubboclub.dk.web.controller;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
-import com.dubboclub.dk.admin.service.OverrideService;
-import com.dubboclub.dk.web.model.BasicResponse;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -18,8 +20,11 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.utils.ConfigUtils;
 import com.dubboclub.dk.admin.model.Provider;
+import com.dubboclub.dk.admin.service.OverrideService;
 import com.dubboclub.dk.admin.service.ProviderService;
 import com.dubboclub.dk.admin.sync.util.Tool;
+import com.dubboclub.dk.web.model.BasicResponse;
+import com.dubboclub.dk.web.utils.StandardConfChecker;
 
 /**
  * Created by bieber on 2015/6/7.
@@ -65,7 +70,11 @@ public class ProviderController {
 
     @RequestMapping("/{id}/provider-detail.htm")
     public @ResponseBody Provider loadProviderDetail(@PathVariable("id")long id){
-        return providerService.getProviderById(id);
+        Provider provider =  providerService.getProviderById(id);
+        if(null != provider){
+        	provider.setStandardConf(StandardConfChecker.getSpecialParameters(provider.getParameters()));
+        }
+        return provider;
     }
 
 

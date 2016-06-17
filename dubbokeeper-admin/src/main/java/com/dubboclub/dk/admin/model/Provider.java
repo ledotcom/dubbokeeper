@@ -55,7 +55,10 @@ public class Provider extends BasicModel {
 
     private Date expired;   /*过期时间*/
 
-    private long alived;    /*存活时间，单位秒*/
+	private long alived;    /*存活时间，单位秒*/
+    
+    // add by Dimmacro 2016年4月5日14:46:26
+    private String standardConf ; /* 标准参数 */
 
 
     private String group;
@@ -181,6 +184,16 @@ public class Provider extends BasicModel {
     public void setAlived(long aliveSeconds) {
         this.alived = aliveSeconds;
     }
+    
+
+    public String getStandardConf() {
+		return standardConf;
+	}
+
+
+	public void setStandardConf(String standardConf) {
+		this.standardConf = standardConf;
+	}
 
     public int getWeight() {
         return weight;

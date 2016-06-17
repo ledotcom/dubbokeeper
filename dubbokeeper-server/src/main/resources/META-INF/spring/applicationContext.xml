@@ -6,7 +6,14 @@
         http://code.alibabatech.com/schema/dubbo http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
 
     <dubbo:application name="${dubbo.application.name}" owner="${dubbo.application.owner}"/>
-
+    
+    <dubbo:registry address="${dubbo.registry.address1}"/>
+    
+    <dubbo:registry id="redisregistry" address="${dubbo.registry.address2}" username="${dubbo.registry.username}" password="${dubbo.registry.password}" >
+		<dubbo:parameter key="redis.type" value="sentinel2"></dubbo:parameter>
+		<dubbo:parameter key="redis.databaseindex" value="0" />
+	 </dubbo:registry>
+ 
     <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
         <property name="locations">
             <value>

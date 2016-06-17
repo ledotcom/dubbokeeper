@@ -39,14 +39,14 @@ public class MysqlStatisticsStorage implements StatisticsStorage,InitializingBea
 
     @Override
     public void storeStatistics(Statistics statistics) {
-        if(!APPLICATION_STORAGES.containsKey(statistics.getApplication().toLowerCase())){
+        if(!APPLICATION_STORAGES.containsKey(statistics.getApplication())){
             ApplicationStatisticsStorage applicationStatisticsStorage  = new ApplicationStatisticsStorage(applicationMapper,statisticsMapper,dataSource,transactionTemplate,statistics.getApplication(),statistics.getType()== Statistics.ApplicationType.CONSUMER?0:1,true);
-            ApplicationStatisticsStorage old = APPLICATION_STORAGES.putIfAbsent(statistics.getApplication().toLowerCase(),applicationStatisticsStorage);
+            ApplicationStatisticsStorage old = APPLICATION_STORAGES.putIfAbsent(statistics.getApplication(),applicationStatisticsStorage);
             if(old==null){
-                applicationStatisticsStorage.start();
+                applicationStatisticsStorage.startSaveData();
             }
         }
-        APPLICATION_STORAGES.get(statistics.getApplication().toLowerCase()).addStatistics(statistics);
+        APPLICATION_STORAGES.get(statistics.getApplication()).addStatistics(statistics);
     }
 
     @Override
@@ -212,7 +212,7 @@ public class MysqlStatisticsStorage implements StatisticsStorage,InitializingBea
         for(ApplicationInfo app:apps){
             ApplicationStatisticsStorage applicationStatisticsStorage =  new ApplicationStatisticsStorage(applicationMapper,statisticsMapper,dataSource,transactionTemplate,app.getApplicationName(),app.getApplicationType());
             APPLICATION_STORAGES.put(app.getApplicationName(),applicationStatisticsStorage);
-            applicationStatisticsStorage.start();
+            applicationStatisticsStorage.startSaveData();
             LOGGER.info("start application [{}] storage",app.getApplicationName());
         }
     }

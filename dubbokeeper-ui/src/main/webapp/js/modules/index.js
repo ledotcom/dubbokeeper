@@ -48,12 +48,12 @@ dubbokeeper.barDataset=[{
     barIdentify:"zoopeeper",
     barHref:"/zoopeeper",
     barIconClass:"icon-eye-open"
-},{
+}/**,{
     barShowName:"AboutUs",
     barIdentify:"aboutus",
     barHref:"/aboutus",
     barIconClass:"icon-bookmark"
-}];
+}**/];
 dubbokeeper.$dkContext= function () {
     var dubboKeeperContext = function () {
         this.inited=false;

@@ -1,23 +1,28 @@
 package com.dubboclub.dk.storage.mysql;
 
-import com.alibaba.dubbo.common.utils.ConfigUtils;
-import com.dubboclub.dk.storage.model.ApplicationInfo;
-import com.dubboclub.dk.storage.model.Statistics;
-import com.dubboclub.dk.storage.mysql.mapper.ApplicationMapper;
-import com.dubboclub.dk.storage.mysql.mapper.StatisticsMapper;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import javax.sql.DataSource;
+
 import org.apache.commons.lang.StringUtils;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import com.alibaba.dubbo.common.utils.ConfigUtils;
+import com.dubboclub.dk.storage.model.ApplicationInfo;
+import com.dubboclub.dk.storage.model.Statistics;
+import com.dubboclub.dk.storage.mysql.mapper.ApplicationMapper;
+import com.dubboclub.dk.storage.mysql.mapper.StatisticsMapper;
 
 /**
  * @date: 2015/12/28.
@@ -28,7 +33,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * @fix:
  * @description: 描述功能
  */
-public class ApplicationStatisticsStorage  extends Thread{
+public class ApplicationStatisticsStorage {
 
     private static final String APPLICATION_TEMPLATE="CREATE TABLE `statistics_{}` (\n" +
             "  `id` int(11) NOT NULL AUTO_INCREMENT,\n" +
@@ -61,7 +66,7 @@ public class ApplicationStatisticsStorage  extends Thread{
 
     private ApplicationMapper applicationMapper;
 
-    private ConcurrentLinkedQueue<Statistics> statisticsCollection = new ConcurrentLinkedQueue<Statistics>();
+    private LinkedBlockingDeque<Statistics> statisticsCollection;
 
     private String application;
 
@@ -73,11 +78,15 @@ public class ApplicationStatisticsStorage  extends Thread{
 
     private volatile int maxSuccess;
 
-    private volatile boolean isWriting=false;
-
     private int type;
 
-    private static final int WRITE_INTERVAL= Integer.parseInt(ConfigUtils.getProperty("mysql.commit.interval", "100"));
+    private static final int WRITE_INTERVAL= Integer.parseInt(ConfigUtils.getProperty("mysql.commit.interval", "1000"));
+    
+    private static final int MAX_BATCH_NUM = Integer.parseInt(ConfigUtils.getProperty("mysql.commit.maxBatchNum", "1000"));
+    
+    private static final int MAX_QUEUE_NUM = Integer.parseInt(ConfigUtils.getProperty("dubbo.monitor.maxQueueNum", "100000"));
+    
+    private ScheduledExecutorService scheduledExecutorService;
 
 
     public ApplicationStatisticsStorage(ApplicationMapper applicationMapper,StatisticsMapper statisticsMapper,DataSource dataSource,TransactionTemplate transactionTemplate,String application,int type){
@@ -90,8 +99,6 @@ public class ApplicationStatisticsStorage  extends Thread{
         this.dataSource = dataSource;
         this.transactionTemplate = transactionTemplate;
         this.applicationMapper = applicationMapper;
-        this.setName(application+"_statisticsWriter");
-        this.setDaemon(true);
         if(needCreateTable){
             ApplicationInfo applicationInfo = new ApplicationInfo();
             applicationInfo.setApplicationName(application);
@@ -101,6 +108,8 @@ public class ApplicationStatisticsStorage  extends Thread{
         }
         init();
         this.type=type;
+        statisticsCollection = new LinkedBlockingDeque<Statistics>(MAX_QUEUE_NUM);
+        scheduledExecutorService = Executors.newScheduledThreadPool(1);
     }
 
 
@@ -118,13 +127,15 @@ public class ApplicationStatisticsStorage  extends Thread{
     }
 
     public void addStatistics(Statistics statistics){
-        while(isWriting){
-            //waiting write finished
-        }
         if(WRITE_INTERVAL<=0){
             statisticsMapper.addOne(application,statistics);
         }else{
-            statisticsCollection.add(statistics);
+            boolean result = statisticsCollection.offer(statistics);
+            if(!result){
+            	// 如果队列数据满了，需要从头部去除一个然后从尾部再添加 Dimmacro
+            	statisticsCollection.poll();
+            	statisticsCollection.offer(statistics);
+            }
         }
         if(maxFault<statistics.getFailureCount()){
             maxFault=statistics.getFailureCount();
@@ -147,41 +158,41 @@ public class ApplicationStatisticsStorage  extends Thread{
             }
         }
     }
-
-
-    @Override
-    public void run() {
-        while(true){
-            isWriting=true;
-            List<Statistics> statisticsList = new ArrayList<Statistics>(statisticsCollection);
-            if(statisticsList.size()>0){
-                if(batchInsert(statisticsList)){
-                    statisticsCollection.clear();
-                }
-            }
-            isWriting=false;
-            try {
-                Thread.sleep(WRITE_INTERVAL);
-            } catch (InterruptedException e) {
-                //do nothing
-            }
-        }
-    }
-
-    public boolean batchInsert(final List<Statistics> statisticsList){
-        return transactionTemplate.execute(new TransactionCallback<Boolean>() {
-            @Override
-            public Boolean doInTransaction(TransactionStatus status) {
-                int size = statisticsMapper.batchInsert(application,statisticsList);
-                if(size!=statisticsList.size()){
-                    status.setRollbackOnly();
-                    return false;
-                }
-                return true;
-            }
-        });
-    }
-
+    
+    public void startSaveData() {
+		scheduledExecutorService.scheduleWithFixedDelay(new Thread(this.application+ "_statisticsWriter") {
+			
+			@Override
+			public void run() {
+				List<Statistics> statisticsList = new ArrayList<Statistics>();
+	            Statistics statistics;
+	            int num = 0;
+	            while(num++ < MAX_BATCH_NUM && null != (statistics = statisticsCollection.poll())){
+	            	statisticsList.add(statistics);
+	            }
+	            if(statisticsList.size()>0){
+	                batchInsert(statisticsList);
+	             }
+				
+			}
+			
+			public boolean batchInsert(final List<Statistics> statisticsList){
+		        return transactionTemplate.execute(new TransactionCallback<Boolean>() {
+		            @Override
+		            public Boolean doInTransaction(TransactionStatus status) {
+		                int size = statisticsMapper.batchInsert(application,statisticsList);
+		                if(size!=statisticsList.size()){
+		                    status.setRollbackOnly();
+		                    return false;
+		                }
+		                return true;
+		            }
+		        });
+		    }
+		}, WRITE_INTERVAL, WRITE_INTERVAL, TimeUnit.MILLISECONDS);
+		
+	}
+    
     private boolean  createNewAppTable(final String applicationName){
         return transactionTemplate.execute(new TransactionCallback<Boolean>() {
             @Override
@@ -202,6 +213,7 @@ public class ApplicationStatisticsStorage  extends Thread{
                             statement.close();
                         } catch (SQLException e) {
                             //do nothing
+                        	e.printStackTrace();
                         }
                     }
                 }
@@ -234,4 +246,5 @@ public class ApplicationStatisticsStorage  extends Thread{
     public int getType() {
         return type;
     }
+
 }

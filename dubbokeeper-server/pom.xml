@@ -33,9 +33,6 @@
                     <version>${project.parent.version}</version>
                 </dependency>
             </dependencies>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
         </profile>
         <profile>
             <id>mysql</id>
@@ -46,6 +43,9 @@
                     <version>${project.parent.version}</version>
                 </dependency>
             </dependencies>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
         </profile>
         <profile>
             <id>mongodb</id>
